@@ -713,6 +713,11 @@ fn measure_timing_pattern(qr: &mut Grid, capstones: &[Capstone], image: &Image<'
     let ver = (size - 15) / 4;
     qr.grid_size = ver * 4 + 17;
 
+    /* Check version */
+    if !(VERSION_MIN..=VERSION_MAX).contains(&(ver as usize)) {
+        return -1;
+    }
+
     0
 }
 
@@ -815,13 +820,22 @@ fn fitness_capstone(qr: &Grid, image: &Image<'_>, mut x: i32, mut y: i32) -> i32
 
 const MAX_ALIGNMENT: usize = 7;
 
+fn get_version_info(version: usize) -> Option<&'static VersionInfo> {
+    if version >= VERSION_DB.len() {
+        return None;
+    }
+    Some(&VERSION_DB[version])
+}
+
 /// Compute a fitness score for the currently configured perspective
 /// transform, using the features we expect to find by scanning the
 /// grid.
 fn fitness_all(qr: &Grid, image: &Image<'_>) -> i32 {
     let version = usize::try_from((qr.grid_size - 17) / 4).expect("invalid version");
-    let info = &VERSION_DB[version];
     let mut score: i32 = 0;
+    let Some(info) = get_version_info(version) else {
+        return score;
+    };
 
     /* Check the timing pattern */
     for i in 0..qr.grid_size - 14 {
@@ -834,9 +848,6 @@ fn fitness_all(qr: &Grid, image: &Image<'_>) -> i32 {
     score += fitness_capstone(qr, image, 0, 0);
     score += fitness_capstone(qr, image, qr.grid_size - 7, 0);
     score += fitness_capstone(qr, image, 0, qr.grid_size - 7);
-    if version > VERSION_MAX {
-        return score;
-    }
 
     /* Check alignment patterns */
     let mut ap_count = 0;
